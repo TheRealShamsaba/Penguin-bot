@@ -47,6 +47,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     await update.message.reply_text("Before we begin… what's your name?")
     context.user_data["awaiting_name"] = True
+    context.user_data["conversation_mode"] = True  # ensure conversation starts
 
 async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -131,8 +132,8 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print(f"[handle_voice ERROR] {str(e)}")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.user_data.get("conversation_mode", False):
-        return  # ignore input unless in conversation
+    if not context.user_data.get("conversation_mode", False) and not context.user_data.get("awaiting_name", False):
+        return  # ignore unless in convo or getting name
 
     text = update.message.text.lower()
     if "i love you" in text:
