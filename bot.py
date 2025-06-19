@@ -4,8 +4,9 @@ from telegram.ext import (
     MessageHandler,
     ContextTypes,
     filters,
+    CallbackQueryHandler,
 )
-from telegram import Update
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from datetime import time, timezone
 import uuid
 # from transcribe import transcribe_voice
@@ -23,18 +24,30 @@ user_contexts = {} # stores / setup descriptions per user
 registered_users = set()  # users who want daily motivational roasts
 
 
-async def handle_message(update, context):
-    await update.message.reply_text("Yo. I'm alive.")
-
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    welcome_messages = [
-        "Welcome to Penguin. This isn't therapy. It's a roast session with consequences.",
-        "You really hit /start? Bold. Let’s see if you can handle what’s coming.",
-        "This bot was built to make you cry. Glad you're here."
+    keyboard = [
+        [InlineKeyboardButton("🔥 Roast me", callback_data="roast")],
+        [InlineKeyboardButton("🧠 Set context", callback_data="setup")],
+        [InlineKeyboardButton("🎯 Daily Motivation", callback_data="motivate")]
     ]
-    await update.message.reply_text(random.choice(welcome_messages))
-    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text("What do you want, weakling?", reply_markup=reply_markup)
+
+async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    user_id = str(query.from_user.id)
+    context_info = user_contexts.get(user_id, "")
+
+    if query.data == "roast":
+        roast = get_roast("roast me", context_info)
+        await query.edit_message_text(f"🐧 Penguin says:\n\n{roast}")
+    elif query.data == "motivate":
+        roast = get_roast("motivation time", context_info)
+        await query.edit_message_text(f"📣 Daily Roast:\n\n{roast}")
+    elif query.data == "setup":
+        await query.edit_message_text("Send /setup followed by your personality description.")
+
 async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.message.from_user.id)
     user_context = " ".join(context.args)
@@ -108,6 +121,7 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("notifyme", notifyme))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(MessageHandler(filters.VOICE, handle_voice))
+    app.add_handler(CallbackQueryHandler(menu_callback))
 
     if app.job_queue:
         app.job_queue.run_daily(
