@@ -1,3 +1,5 @@
-python-telegram-bot==20.8
-openai
-python-dotenv
+python-telegram-bot==20.3
+huggingface_hub
+gtts
+torch
+git+https://github.com/openai/whisper.git
