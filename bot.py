@@ -15,7 +15,6 @@ from huggingface_wrapper import get_roast_hf as get_roast
 import random
 from tts import text_to_speech
 from telegram import Voice
-from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, ContextTypes, filters
 
 load_dotenv()
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -27,8 +26,6 @@ registered_users = set()  # users who want daily motivational roasts
 async def handle_message(update, context):
     await update.message.reply_text("Yo. I'm alive.")
 
-app = ApplicationBuilder().token(BOT_TOKEN).build()
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_messages = [
@@ -100,30 +97,27 @@ async def send_daily_roasts(context: ContextTypes.DEFAULT_TYPE):
                 chat_id=user_id, text=f"[Penguin voice failed: {str(e)}]"
             )
 
-app = ApplicationBuilder().token(BOT_TOKEN).build()
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("setup", setup))
-app.add_handler(CommandHandler("notifyme", notifyme))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-app.add_handler(MessageHandler(filters.VOICE, handle_voice))
-
-if app.job_queue:
-    app.job_queue.run_daily(
-        send_daily_roasts, time=time(hour=0, minute=30, tzinfo=timezone.utc)
-    )
-else:
-    print("⚠️ JobQueue not available. Install with: pip install python-telegram-bot[job-queue]")
 
 if __name__ == "__main__":
     import asyncio
-    from telegram.ext import ApplicationBuilder
 
     app = ApplicationBuilder().token(os.getenv("TELEGRAM_BOT_TOKEN")).build()
 
-    # Add your handlers like app.add_handler(...)
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("setup", setup))
+    app.add_handler(CommandHandler("notifyme", notifyme))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.add_handler(MessageHandler(filters.VOICE, handle_voice))
 
-app.run_webhook(
-    listen="0.0.0.0",
-    port=int(os.getenv("PORT", 8443)),
-    webhook_url=os.getenv("WEBHOOK_URL")  # or your actual domain
-)
+    if app.job_queue:
+        app.job_queue.run_daily(
+            send_daily_roasts, time=time(hour=0, minute=30, tzinfo=timezone.utc)
+        )
+    else:
+        print("⚠️ JobQueue not available. Install with: pip install python-telegram-bot[job-queue]")
+
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=int(os.getenv("PORT", 8443)),
+        webhook_url=os.getenv("WEBHOOK_URL")
+    )
