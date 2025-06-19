@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+
+# System Files
+.DS_Store
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
+
+# Audio Files
+*.mp3
+*.wav
+
+# Env Vars
+.env
