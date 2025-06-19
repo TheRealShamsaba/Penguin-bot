@@ -6,7 +6,7 @@ from telegram.ext import (
     filters,
     CallbackQueryHandler,
 )
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from datetime import time, timezone
 import uuid
 # from transcribe import transcribe_voice
@@ -37,9 +37,9 @@ async def play_roast_voice(update, roast):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("🔥 Roast me", callback_data="roast")],
-        [InlineKeyboardButton("🧠 Set context", callback_data="setup")],
-        [InlineKeyboardButton("🎯 Daily Motivation", callback_data="motivate")]
+        [KeyboardButton("🔥 Roast me")],
+        [KeyboardButton("🧠 Set context")],
+        [KeyboardButton("🎯 Daily Motivation")]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, is_persistent=True)
     await update.message.reply_text(
@@ -131,6 +131,9 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print(f"[handle_voice ERROR] {str(e)}")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.user_data.get("conversation_mode", False):
+        return  # ignore input unless in conversation
+
     text = update.message.text.lower()
     if "i love you" in text:
         await update.message.reply_text("Cringe. But ok. I love you too, loser.")
@@ -145,6 +148,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data.get("awaiting_name"):
         context.user_data["name"] = update.message.text.strip()
         context.user_data["awaiting_name"] = False
+        context.user_data["conversation_mode"] = True
         await update.message.reply_text(f"Got it. I'll remember that, {context.user_data['name']}. Now talk to me like a human.")
         return
 
@@ -168,6 +172,8 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception as e:
             await update.message.reply_text(f"🐧 Penguin choked: {str(e)}")
             print(f"[handle_message ERROR] {str(e)}")
+    else:
+        context.user_data["conversation_mode"] = True
 
 async def send_daily_roasts(context: ContextTypes.DEFAULT_TYPE):
     for user_id in list(registered_users):
