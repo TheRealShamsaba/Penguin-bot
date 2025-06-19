@@ -1,5 +1,5 @@
 python-telegram-bot==20.3
 huggingface_hub
 gtts
-torch
+
 
