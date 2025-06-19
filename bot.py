@@ -8,7 +8,7 @@ from telegram.ext import (
 from telegram import Update
 from datetime import time, timezone
 import uuid
-from transcribe import transcribe_voice
+# from transcribe import transcribe_voice
 import os
 from dotenv import load_dotenv
 from huggingface_wrapper import get_roast_hf as get_roast
