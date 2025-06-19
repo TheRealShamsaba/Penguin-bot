@@ -101,7 +101,7 @@ app.add_handler(MessageHandler(filters.VOICE, handle_voice))
 
 job_queue = app.job_queue
 job_queue.run_daily(
-    send_daily_roasts, time=time(hour=9, minute=0, tzinfo=timezone.utc)
+    send_daily_roasts, time=time(hour=0, minute=30, tzinfo=timezone.utc)
 )
 
 app.run_polling()
