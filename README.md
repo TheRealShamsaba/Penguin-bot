@@ -19,6 +19,7 @@ Penguin is your brutally honest, foul-mouthed Telegram bestie. It roasts you, sw
 - Text-to-voice replies using gTTS
 - Personalized roast logic with memory
 - Works with text or voice messages
+- Daily motivational roast notifications with `/notifyme`
 
 ## 📦 Requirements
 - Python 3.10+
@@ -33,3 +34,8 @@ Penguin is your brutally honest, foul-mouthed Telegram bestie. It roasts you, sw
 ```env
 HF_TOKEN=your_huggingface_token_here
 TELEGRAM_BOT_TOKEN=your_telegram_token_here
+```
+
+## Daily Motivation
+
+Use `/notifyme` in chat to get a random roast every day. Penguin will send both a text and voice message, so you never miss your daily dose of tough love.

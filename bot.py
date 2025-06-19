@@ -1,6 +1,12 @@
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    ContextTypes,
+    filters,
+)
 from telegram import Update
-from telegram.ext import ContextTypes
+from datetime import time, timezone
 import uuid
 from transcribe import transcribe_voice
 import os
@@ -14,6 +20,7 @@ load_dotenv()
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
 user_contexts = {} # stores / setup descriptions per user
+registered_users = set()  # users who want daily motivational roasts
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_messages = [
@@ -28,6 +35,14 @@ async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_context = " ".join(context.args)
     user_contexts[user_id] = user_context
     await update.message.reply_text("Context saved. Penguin will use this to roast you more personally.")
+
+
+async def notifyme(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_chat.id
+    registered_users.add(user_id)
+    await update.message.reply_text(
+        "Penguin will drop a daily motivational roast in your DMs. Brace yourself."
+    )
 
     
 async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -62,10 +77,31 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         await update.message.reply_text(f"[Penguin voice failed: {str(e)}]")
 
+
+async def send_daily_roasts(context: ContextTypes.DEFAULT_TYPE):
+    for user_id in list(registered_users):
+        roast = get_roast("motivation time", "")
+        await context.bot.send_message(chat_id=user_id, text=roast)
+        try:
+            audio_file = text_to_speech(roast)
+            with open(audio_file, "rb") as audio:
+                await context.bot.send_voice(chat_id=user_id, voice=audio)
+            os.remove(audio_file)
+        except Exception as e:
+            await context.bot.send_message(
+                chat_id=user_id, text=f"[Penguin voice failed: {str(e)}]"
+            )
+
 app = ApplicationBuilder().token(BOT_TOKEN).build()
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("setup", setup))
+app.add_handler(CommandHandler("notifyme", notifyme))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 app.add_handler(MessageHandler(filters.VOICE, handle_voice))
+
+job_queue = app.job_queue
+job_queue.run_daily(
+    send_daily_roasts, time=time(hour=9, minute=0, tzinfo=timezone.utc)
+)
 
 app.run_polling()
