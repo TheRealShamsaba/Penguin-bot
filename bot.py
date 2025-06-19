@@ -15,12 +15,20 @@ from huggingface_wrapper import get_roast_hf as get_roast
 import random
 from tts import text_to_speech
 from telegram import Voice
+from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, ContextTypes, filters
 
 load_dotenv()
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 
 user_contexts = {} # stores / setup descriptions per user
 registered_users = set()  # users who want daily motivational roasts
+
+
+async def handle_message(update, context):
+    await update.message.reply_text("Yo. I'm alive.")
+
+app = ApplicationBuilder().token(BOT_TOKEN).build()
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome_messages = [
@@ -114,6 +122,8 @@ if __name__ == "__main__":
 
     # Add your handlers like app.add_handler(...)
 
-    app.run_polling()
-
-app.run_polling()
+app.run_webhook(
+    listen="0.0.0.0",
+    port=int(os.getenv("PORT", 8443)),
+    webhook_url=os.getenv("WEBHOOK_URL")  # or your actual domain
+)
