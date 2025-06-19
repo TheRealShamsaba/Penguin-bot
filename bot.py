@@ -36,11 +36,17 @@ async def play_roast_voice(update, roast):
         print(f"[play_roast_voice ERROR] {str(e)}")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [["🔥 Roast me", "🧠 Set Context", "🎯 Motivation"]]
-    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    keyboard = [
+        [InlineKeyboardButton("🔥 Roast me", callback_data="roast")],
+        [InlineKeyboardButton("🧠 Set context", callback_data="setup")],
+        [InlineKeyboardButton("🎯 Daily Motivation", callback_data="motivate")]
+    ]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True, is_persistent=True)
     await update.message.reply_text(
         "Welcome to Penguin. Pick your poison:", reply_markup=reply_markup
     )
+    await update.message.reply_text("Before we begin… what's your name?")
+    context.user_data["awaiting_name"] = True
 
 async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -74,6 +80,9 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text("Motivation setup cancelled. Coward.")
     elif query.data == "setup":
         await query.edit_message_text("Send /setup followed by your personality description.")
+    elif query.data.startswith("persona_"):
+        context.user_data["persona"] = query.data.split("_")[1]
+        await query.edit_message_text(f"Penguin now speaks in {context.user_data['persona']} mode.")
 
 async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.message.from_user.id)
@@ -81,6 +90,19 @@ async def setup(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_contexts[user_id] = user_context
     await update.message.reply_text("Context saved. Penguin will use this to roast you more personally.")
 
+async def chaosmode(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["chaos"] = not context.user_data.get("chaos", False)
+    status = "ON" if context.user_data["chaos"] else "OFF"
+    await update.message.reply_text(f"💥 Chaos Mode is now {status}. Brace yourself.")
+
+async def persona(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton("👑 Royal Penguin", callback_data="persona_royal")],
+        [InlineKeyboardButton("😈 Demon Penguin", callback_data="persona_demon")],
+        [InlineKeyboardButton("🤠 Cowboy Penguin", callback_data="persona_cowboy")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text("Choose Penguin's vibe:", reply_markup=reply_markup)
 
 async def notifyme(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_chat.id
@@ -109,34 +131,43 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print(f"[handle_voice ERROR] {str(e)}")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    text = update.message.text.lower()
+    if "i love you" in text:
+        await update.message.reply_text("Cringe. But ok. I love you too, loser.")
+        return
+    elif "kill me" in text:
+        await update.message.reply_text("Already spiritually dead, but sure.")
+        return
+    elif "stop" in text:
+        await update.message.reply_text("You came to a roast bot to quit now? That’s peak pathetic.")
+        return
+
+    if context.user_data.get("awaiting_name"):
+        context.user_data["name"] = update.message.text.strip()
+        context.user_data["awaiting_name"] = False
+        await update.message.reply_text(f"Got it. I'll remember that, {context.user_data['name']}. Now talk to me like a human.")
+        return
+
     user_id = str(update.message.from_user.id)
     user_input = update.message.text
     context_info = user_contexts.get(user_id, "")
 
-    if user_input == "🔥 Roast me":
-        user_input = "roast me"
-    elif user_input == "🧠 Set Context":
-        await update.message.reply_text("Use /setup followed by your personality description.")
-        return
-    elif user_input == "🎯 Motivation":
-        keyboard = [
-            [InlineKeyboardButton("🔥 Brutal", callback_data="tone_brutal")],
-            [InlineKeyboardButton("🧨 Degrading", callback_data="tone_degrading")],
-            [InlineKeyboardButton("🧠 Straight Talk", callback_data="tone_straight")]
-        ]
-        await update.message.reply_text("Choose your motivation tone:", reply_markup=InlineKeyboardMarkup(keyboard))
-        return
-
-    try:
-        roast = get_roast(user_input, context_info)
-        await update.message.reply_text(roast)
-        audio_file = text_to_speech(roast)
-        with open(audio_file, "rb") as audio:
-            await update.message.reply_voice(audio)
-        os.remove(audio_file)
-    except Exception as e:
-        await update.message.reply_text(f"🐧 Penguin choked: {str(e)}")
-        print(f"[handle_message ERROR] {str(e)}")
+    if user_input not in ["🔥 Roast me", "🧠 Set Context", "🎯 Motivation"]:
+        try:
+            persona = context.user_data.get("persona", "")
+            chaos = context.user_data.get("chaos", False)
+            persona_tag = f"[Persona: {persona}]" if persona else ""
+            chaos_tag = "[CHAOS MODE]" if chaos else ""
+            roast = get_roast(f"{chaos_tag} {user_input}", f"{context_info} {persona_tag}")
+            name = context.user_data.get("name", "you")
+            await update.message.reply_text(f"{roast} ({name})")
+            audio_file = text_to_speech(roast)
+            with open(audio_file, "rb") as audio:
+                await update.message.reply_voice(audio)
+            os.remove(audio_file)
+        except Exception as e:
+            await update.message.reply_text(f"🐧 Penguin choked: {str(e)}")
+            print(f"[handle_message ERROR] {str(e)}")
 
 async def send_daily_roasts(context: ContextTypes.DEFAULT_TYPE):
     for user_id in list(registered_users):
@@ -161,6 +192,8 @@ if __name__ == "__main__":
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("setup", setup))
     app.add_handler(CommandHandler("notifyme", notifyme))
+    app.add_handler(CommandHandler("chaosmode", chaosmode))
+    app.add_handler(CommandHandler("persona", persona))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_handler(MessageHandler(filters.VOICE, handle_voice))
     app.add_handler(CallbackQueryHandler(menu_callback))
