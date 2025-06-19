@@ -43,8 +43,26 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         roast = get_roast("roast me", context_info)
         await query.edit_message_text(f"🐧 Penguin says:\n\n{roast}")
     elif query.data == "motivate":
-        roast = get_roast("motivation time", context_info)
-        await query.edit_message_text(f"📣 Daily Roast:\n\n{roast}")
+        keyboard = [
+            [InlineKeyboardButton("🔥 Brutal", callback_data="tone_brutal")],
+            [InlineKeyboardButton("🧨 Degrading", callback_data="tone_degrading")],
+            [InlineKeyboardButton("🧠 Straight Talk", callback_data="tone_straight")]
+        ]
+        await query.edit_message_text("Choose your motivation tone:", reply_markup=InlineKeyboardMarkup(keyboard))
+    elif query.data.startswith("tone_"):
+        context.user_data["tone"] = query.data.split("_")[1]
+        keyboard = [
+            [InlineKeyboardButton("Every 30 min", callback_data="freq_30min")],
+            [InlineKeyboardButton("Every hour", callback_data="freq_1hour")],
+            [InlineKeyboardButton("Every day", callback_data="freq_daily")],
+            [InlineKeyboardButton("Nevermind", callback_data="cancel_motivate")]
+        ]
+        await query.edit_message_text("How often do you want to be roasted?", reply_markup=InlineKeyboardMarkup(keyboard))
+    elif query.data.startswith("freq_"):
+        freq = query.data.split("_")[1]
+        await query.edit_message_text(f"You're all set. Penguin will roast you every {freq.replace('min', ' minutes').replace('hour', ' hour').replace('daily', 'day')}.")
+    elif query.data == "cancel_motivate":
+        await query.edit_message_text("Motivation setup cancelled. Coward.")
     elif query.data == "setup":
         await query.edit_message_text("Send /setup followed by your personality description.")
 
