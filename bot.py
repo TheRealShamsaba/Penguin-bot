@@ -6,7 +6,7 @@ from telegram.ext import (
     filters,
     CallbackQueryHandler,
 )
-from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup
 from datetime import time, timezone
 import uuid
 # from transcribe import transcribe_voice
@@ -16,6 +16,7 @@ from huggingface_wrapper import get_roast_hf as get_roast
 import random
 from tts import text_to_speech
 from telegram import Voice
+import asyncio
 
 load_dotenv()
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -24,14 +25,22 @@ user_contexts = {} # stores / setup descriptions per user
 registered_users = set()  # users who want daily motivational roasts
 
 
+async def play_roast_voice(update, roast):
+    try:
+        audio_file = text_to_speech(roast)
+        with open(audio_file, "rb") as audio:
+            await update.message.reply_voice(audio)
+        os.remove(audio_file)
+    except Exception as e:
+        await update.message.reply_text(f"[Penguin voice failed: {str(e)}]")
+        print(f"[play_roast_voice ERROR] {str(e)}")
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        [InlineKeyboardButton("🔥 Roast me", callback_data="roast")],
-        [InlineKeyboardButton("🧠 Set context", callback_data="setup")],
-        [InlineKeyboardButton("🎯 Daily Motivation", callback_data="motivate")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("What do you want, weakling?", reply_markup=reply_markup)
+    keyboard = [["🔥 Roast me", "🧠 Set Context", "🎯 Motivation"]]
+    reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    await update.message.reply_text(
+        "Welcome to Penguin. Pick your poison:", reply_markup=reply_markup
+    )
 
 async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -94,25 +103,40 @@ async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE):
         os.remove(ogg_path)
         roast = get_roast(transcribed_text, context_info)
         await update.message.reply_text(f"🎙️ You said: {transcribed_text}\n\n🐧 Penguin says: {roast}")
+        asyncio.create_task(play_roast_voice(update, roast))
     except Exception as e:
-        await update.message.reply_text(f"Failed to process voice message: {str(e)}")
+        await update.message.reply_text(f"🐧 Penguin froze: {str(e)}")
+        print(f"[handle_voice ERROR] {str(e)}")
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = str(update.message.from_user.id)
     user_input = update.message.text
     context_info = user_contexts.get(user_id, "")
-    roast = get_roast(user_input, context_info)
-    
-    await update.message.reply_text(roast)
+
+    if user_input == "🔥 Roast me":
+        user_input = "roast me"
+    elif user_input == "🧠 Set Context":
+        await update.message.reply_text("Use /setup followed by your personality description.")
+        return
+    elif user_input == "🎯 Motivation":
+        keyboard = [
+            [InlineKeyboardButton("🔥 Brutal", callback_data="tone_brutal")],
+            [InlineKeyboardButton("🧨 Degrading", callback_data="tone_degrading")],
+            [InlineKeyboardButton("🧠 Straight Talk", callback_data="tone_straight")]
+        ]
+        await update.message.reply_text("Choose your motivation tone:", reply_markup=InlineKeyboardMarkup(keyboard))
+        return
 
     try:
+        roast = get_roast(user_input, context_info)
+        await update.message.reply_text(roast)
         audio_file = text_to_speech(roast)
         with open(audio_file, "rb") as audio:
             await update.message.reply_voice(audio)
         os.remove(audio_file)
     except Exception as e:
-        await update.message.reply_text(f"[Penguin voice failed: {str(e)}]")
-
+        await update.message.reply_text(f"🐧 Penguin choked: {str(e)}")
+        print(f"[handle_message ERROR] {str(e)}")
 
 async def send_daily_roasts(context: ContextTypes.DEFAULT_TYPE):
     for user_id in list(registered_users):
