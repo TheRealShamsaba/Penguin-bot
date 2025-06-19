@@ -99,10 +99,12 @@ app.add_handler(CommandHandler("notifyme", notifyme))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 app.add_handler(MessageHandler(filters.VOICE, handle_voice))
 
-job_queue = app.job_queue
-job_queue.run_daily(
-    send_daily_roasts, time=time(hour=0, minute=30, tzinfo=timezone.utc)
-)
+if app.job_queue:
+    app.job_queue.run_daily(
+        send_daily_roasts, time=time(hour=0, minute=30, tzinfo=timezone.utc)
+    )
+else:
+    print("⚠️ JobQueue not available. Install with: pip install python-telegram-bot[job-queue]")
 
 if __name__ == "__main__":
     import asyncio
