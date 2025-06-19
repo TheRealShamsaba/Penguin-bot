@@ -104,4 +104,14 @@ job_queue.run_daily(
     send_daily_roasts, time=time(hour=0, minute=30, tzinfo=timezone.utc)
 )
 
+if __name__ == "__main__":
+    import asyncio
+    from telegram.ext import ApplicationBuilder
+
+    app = ApplicationBuilder().token(os.getenv("TELEGRAM_BOT_TOKEN")).build()
+
+    # Add your handlers like app.add_handler(...)
+
+    app.run_polling()
+
 app.run_polling()
